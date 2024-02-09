@@ -18,9 +18,6 @@ const OAuth2Strategy = require('passport-google-oauth2').Strategy;
 
 const port = process.env.PORT | 3000;
 
-const clientId  ="904033972924-8ejo8mlp2a42lr04rhi29nl1lsm9mbjj.apps.googleusercontent.com";
-const clientSecret = "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"
-
 //middlewars
 app.use(cors({
   origin:"http://localhost:5173",
