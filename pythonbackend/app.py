@@ -19,10 +19,8 @@ def get_data():
 
 @app.route('/api/data/pdf',methods=['POST'])
 def get_pdf():
-    os.environ["OPENAI_API_KEY"] ="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"
-    #"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"
-    #  "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"
-    # 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
+    os.environ["OPENAI_API_KEY"] ="xyz"
+    
     if 'file' not in request.files:
         return jsonify({'error':'invalid data'})
     
