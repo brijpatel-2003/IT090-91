@@ -25,23 +25,7 @@ Allow users to create accounts, providing them with a personalized dashboard to 
 
 Efficiently search and filter through job listings based on criteria such as job title, location, job Type and required skills. This feature enhances the user experience and helps applicants find relevant opportunities.
 
-## Getting Started
 
-Follow these steps to set up and run the project locally:
-
-1. **Clone the repository:**
-https://github.com/danishppatel/job-portal.git
-
-
-2. **Navigate to the project directory:**
-cd job-portal
-
-
-3. **Install dependencies:**
-npm install
-
-4. **Start the application:**
-npm start
 
 ## License
 
