@@ -27,8 +27,5 @@ Efficiently search and filter through job listings based on criteria such as job
 
 
 
-## License
-
-This project is licensed under the [MIT License](LICENSE). Feel free to use and modify the code according to your needs.
 
 
