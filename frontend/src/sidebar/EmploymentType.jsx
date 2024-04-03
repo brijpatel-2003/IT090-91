@@ -10,9 +10,9 @@ function EmploymentType({handleChange}) {
         <label className="sidebar-label-container">
           <input
             type="radio"
-            name="test"
-            id="test"
-            value=""
+            name="employment"
+            id="employment"
+            value="all"
             onChange={handleChange}
           />
           <span className="checkmark"></span>All
@@ -22,21 +22,27 @@ function EmploymentType({handleChange}) {
           handleChange={handleChange}
           value="full-time"
           title="Full-time"
-          name="test"
+          name="employment"
         />
         
         <InputField
           handleChange={handleChange}
           value="temporary"
           title="Temporary"
-          name="test"
+          name="employment"
         />
         
         <InputField
           handleChange={handleChange}
           value="part-time"
           title="Part-time"
-          name="test"
+          name="employment"
+        />
+        <InputField
+          handleChange={handleChange}
+          value="Internship"
+          title="Internship"
+          name="employment"
         />
     
       </div>

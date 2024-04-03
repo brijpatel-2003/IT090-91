@@ -6,41 +6,64 @@ import Sidebar from "../sidebar/Sidebar";
 import CreateJob from "./CreateJob";
 import CardUsers from "../Components/CardUsers";
 import Applicants from "./Applicants";
+import { useSelector } from "react-redux";
+import { Await, useNavigate } from "react-router-dom";
+import Error from "./Error";
 
 function Home() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [jobs, setJobs] = useState([]); //  as json array object
-  const [jobSeekers, setJobSeekers] =  useState([]); // as json array object
   const [isLoading, setIsLoading] = useState(true);
+  const [jobList,setJobList] = useState([])
   const [currentPage, setCurrentPage] = useState(1);
-  const [currentPageForApplicant, setCurrentPageForApplicant] = useState(1);
+  let filterData = {
+    location:"all",
+    salary:'all',
+    date_of_posting:'all',
+    work_experience:'all',
+    employment:'all',
+  }
+  const [filter,setFilter] = useState(filterData);
   const itemsPerPage = 6;
+  
+  const todos = useSelector((state)=>state.todos);
+  
+  
+  let filteredJobs = []; //extract those which are not apllied by jobseeker
+  let user = useSelector(state=>state.todos)
+
+  let navigate = useNavigate();
+  useEffect(()=>{
+    if(user.userEmail ===''){
+      navigate('/login');
+    }
+  },[])
 
   const selectedMode = localStorage.getItem("selectedMode");
-
+  
+  //Jobs- for jobseeker  
   useEffect(() => {
-    setIsLoading(true);
-    fetch("http://localhost:3000/all-jobs")
-      .then((res) => res.json())
-      .then((data) => {
-        setJobs(data);
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        // console.log("here email",todos.userEmail);
+        const appliedJobsRes = await fetch(`http://localhost:3000/applied-jobs/${todos.userEmail}`);
+        const appliedJobsData = await appliedJobsRes.json();
+
+        const jobsRes = await fetch("http://localhost:3000/all-jobs");
+        const jobsData = await jobsRes.json();
+        
+        setJobs(jobsData);
+        setJobList(appliedJobsData)
         setIsLoading(false);
-      });
-  }, []);
-
-  useEffect(() => {
-    setIsLoading(true);
-    fetch("http://localhost:3000/all-jobSeeker")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("data: ",data);
-        setJobSeekers(data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
         setIsLoading(false);
-      });
+      }
+    };
+
+    fetchData();
   }, []);
-
-
-  // console.log(jobs);
 
   // For Banner Components
   const [query, setQuery] = useState("");
@@ -53,11 +76,12 @@ function Home() {
   const filteredItems = jobs.filter(
     (job) => job.jobTitle.toLowerCase().indexOf(query.toLowerCase()) !== -1
   );
-  // console.log(filteredItems)
 
   //--------------------Radio filtering-----------------------
   const handleChange = (event) => {
     setSelectedCategory(event.target.value);
+    setFilter({...filter,[event.target.name]:event.target.value});
+   
   };
 
   //--------------------Button based filtering-----------------------
@@ -76,8 +100,7 @@ function Home() {
 
   //function for the next phase
   const nextPage = () => {
-    // console.log(Math.ceil(filteredItems.length / itemsPerPage));
-    if (currentPage < Math.ceil(filteredItems.length / itemsPerPage)) {
+    if (currentPage < Math.ceil(filteredJobs.length / itemsPerPage)) {
       setCurrentPage(currentPage + 1);
     }
   };
@@ -91,10 +114,27 @@ function Home() {
 
   //main function
   const filteredData = (jobs, selected, query) => {
-    let filteredJobs = jobs;
+    let f = false;
+    
+    // display only those which are not applied by jobseeker
+    jobs.map((x)=>{
+        f = false;
 
-    console.log(typeof selected);
-
+        jobList.forEach((id)=> {
+          if(id === x._id){
+            f = true;
+          }
+        })
+        
+        if(f === true){
+           return null;
+        }
+        else{
+          filteredJobs.push(x);
+          return x;
+        }
+    })
+ 
     // input items wise filtering ( based on jobTitle)
     if (query) {
       filteredJobs = filteredItems;
@@ -106,59 +146,35 @@ function Home() {
         ({
           jobLocation,
           maxPrice,
+          minPrice,
           salaryType,
           experienceLevel,
           employmentType,
           postingDate,
         }) =>
-          // console.log(postingDate, postingDate.toString() > selected, (postingDate.toString() > selected) ||
-          // jobLocation.toLowerCase() === selected.toLowerCase() ||
-          // parseInt(maxPrice) <= parseInt(selected) ||
-          // salaryType.toLowerCase() === selected.toLowerCase() ||
-          // experienceLevel.toLowerCase() === selected.toLowerCase() ||
-          // employmentType.toLowerCase() === selected.toLowerCase(), parseInt(maxPrice) <= parseInt(selected))
-
-          //return
-          // (postingDate.toString() > selected) &&
-          jobLocation.toLowerCase() === selected.toLowerCase() ||
-          parseInt(maxPrice) <= parseInt(selected) ||
-          salaryType.toLowerCase() === selected.toLowerCase() ||
-          experienceLevel.toLowerCase() === selected.toLowerCase() ||
-          employmentType.toLowerCase() === selected.toLowerCase()
+   
+          ((jobLocation.toLowerCase() === filter.location.toLowerCase()|| filter.location === 'all')
+          &&( parseInt(maxPrice) > parseInt(filter.salary) || filter.salary === 'all')
+          &&(experienceLevel.toLowerCase() === filter.work_experience.toLowerCase()|| filter.work_experience === 'all') &&(employmentType.toLowerCase() === filter.employment.toLowerCase()|| filter.employment === 'all') && (postingDate  > filter.date_of_posting|| filter.date_of_posting === 'all'))
+       
       );
-
-      // console.log(filteredJobs);
-      // console.log( postingDate >= selected ,typeof selected)
     }
 
     // slice the data based on current page
     const { startIndex, endIndex } = calculatePageRange();
 
-    filteredJobs = filteredJobs.slice(startIndex, endIndex);
-
-    return filteredJobs.map((data, i) => <Card key={i} data={data} />);
+    let  filteredJobs1 = filteredJobs.slice(startIndex, endIndex);
+    // console.log("after slice",filteredJobs1);
+   
+    return filteredJobs1.map((data, i) =>   <Card key={i} data={data} /> );
   };
 
   // result
-  const result = filteredData(jobs, selectedCategory, query);
-
-  //Applicant Details
-  const applicantList = (jobSeekers) =>{
-    let jobseekerList =  jobSeekers;
-
-    const { startIndex, endIndex } = calculatePageRange();
-
-    jobseekerList = jobseekerList.slice(startIndex, endIndex);
-
-    return jobseekerList.map((data, i) => <CardUsers key={i} data={data} />);
-  }
-
-
-  const jobseeker = applicantList(jobSeekers);
-  // console.log(jobse  eker)
+  const result = filteredData(jobs, selectedCategory, query);  //call
 
   return (
     <div>
+
       {/* passed as props  */}
       <Banner query={query} handleInputChange={handleInputChange} />
 
@@ -171,7 +187,7 @@ function Home() {
 
         {/* -----------------------------------------------job card-------------------------------------------------------- */}
 
-        {selectedMode === "mode1" ? (
+
           <div className="col-span-3 bg-white p-4 rounded-sm">
             {isLoading ? (
               <p className="font-medium">Loading...</p>
@@ -196,14 +212,16 @@ function Home() {
                 </button>
                 <span className="mx-2">
                   Page {currentPage} of{" "}
-                  {Math.ceil(filteredItems.length / itemsPerPage)}{" "}
+                  {/* {Math.ceil(filteredItems.length / itemsPerPage)}{" "} */}
+                  {Math.ceil(filteredJobs.length / itemsPerPage)}{" "}
+                  
                 </span>
                 <button
                   onClick={nextPage}
                   className="hover:underline"
                   disabled={
                     currentPage ===
-                    Math.ceil(filteredItems.length / itemsPerPage)
+                    Math.ceil(filteredJobs.length / itemsPerPage)
                   }
                 >
                   Next
@@ -213,56 +231,9 @@ function Home() {
               ""
               )}
           </div>
-        ) : (
-          /* -----------------------------------------------job-seeker card-------------------------------------------------------- */
-          <div className="col-span-3 bg-white p-4 rounded-sm">
-            {isLoading ? (
-              <p className="font-medium">Loading...</p>
-            ) : jobseeker.length > 0 ? (
-              <Applicants result={jobseeker} />
-            ) : (
-              <>
-                <h3 className="text-lg font-bold mb-2">
-                  {jobseeker.length} Applicant List
-                </h3>
-                <p>No data found!</p>
-              </>
-            )}
-
-            {/* pagination here */}
-            {result.length > 0 ? (
-              <div className="flex justify-center mt-4 space-x-8">
-                <button
-                  onClick={previousPage}
-                  className="hover:underline"
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                <span className="mx-2">
-                  Page {currentPage} of{" "}
-                  {Math.ceil(filteredItems.length / itemsPerPage)}{" "}
-                </span>
-                <button
-                  onClick={nextPage}
-                  className="hover:underline"
-                  disabled={
-                    currentPage ===
-                    Math.ceil(filteredItems.length / itemsPerPage)
-                  }
-                >
-                  Next
-                </button>
-              </div>
-            ) : (
-              ""
-            )}
-          </div>
-        )}
+         
 
       </div>
-
-      {/* <CreateJob/> */}
     </div>
   );
 }

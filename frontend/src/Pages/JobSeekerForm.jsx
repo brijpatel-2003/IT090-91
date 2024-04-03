@@ -23,7 +23,7 @@ const JobSeekerForm = () => {
     //   const {name , value} =  e.target;
     //   setfillupField({...fillupField, [name] :value});
     // }
-
+  const [name,setName] = useState("");
     useEffect(() => {
         const fetchDataFromApi = async () => {
           try {
@@ -50,9 +50,17 @@ const JobSeekerForm = () => {
           project: defaultValue.project || '',
           
         });
-      }, 700);
+        setName(defaultValue.name)
+      }, 7000);
   
       }, [defaultValue]);
+      
+  const hanedleChange = (e)=>{
+  
+    setName(e.target.value)
+    reset({name:e.target.value})
+
+  }
     
   const [SelectedOption, setSelectedOption] = useState(null);
   
@@ -64,24 +72,76 @@ const JobSeekerForm = () => {
     formState: { errors },
   } = useForm();
 
-  const onSubmit =  (data) => {
-    console.log(data);
+  const onSubmit = async (data) => {
+    // Modify the form data here
     data.skills = SelectedOption;
-    //Call Api
-    fetch('http://localhost:3000/post-jobSeeker', {
+
+    // Log the modified data
+  
+
+    try {
+      // Send the modified data to the server
+      const response = await fetch('http://localhost:3000/post-jobSeeker', {
         method: 'POST',
-        mode:"cors",
-        headers :{
-          "Content-Type" : 'application/json',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        body : JSON.stringify(data)
-    }).then(res=>res.json()).then(data =>  console.log("job seker data:  " ,data)).catch(err=>console.log(err));
-   
+        body: JSON.stringify(data),
+      });
+
+      const responseData = await response.json();
+      
+    } catch (error) {
+      console.error("Error submitting form data:", error);
+    }
+
+    // Reset form or navigate to another page if needed
     setSelectedOption(null);
-
-    navigate(`/abc`);
-
+    navigate(`/`);
   };
+  let counter=0;
+  const handleModify = async(data) =>{
+    function generateUniqueId() {
+      const timestamp = Date.now().toString(36); // Convert timestamp to base36 string
+      const randomString = Math.random().toString(36).substr(2, 5); // Generate random string
+      const uniqueInfo = counter.toString(36); // Convert counter to base36 string
+      counter++;
+      return timestamp + randomString + uniqueInfo;
+    }
+    
+   
+    
+    try {
+      data.id = generateUniqueId();
+      console.log(data);
+      
+      // Send the modified data to the server
+      const response = await fetch('http://localhost:3000/post-jobSeeker', {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      console.log("data",response);
+    }catch(err){};
+
+    try {
+
+      // Send the modified data to the server
+      const response = await fetch(`http://localhost:3000/jobseeker/id/${data.id}`).then(response=>response.json()).then(data=>{
+        console.log("by email",data);
+        navigate(`/modify-Jobseekerdata/${data[0]['_id']}`)
+        return data;
+      }).catch();
+
+    }catch(err){};
+   
+   
+  }
+
 
   const options = [
     { value: "JavaScript", label: "JavaScript" },
@@ -107,7 +167,9 @@ const JobSeekerForm = () => {
                 type="text"
                
                 placeholder="Ex:Patel Brij"
-                {...register("name")}
+               value={name}
+                name="name"
+                onChange={hanedleChange}
                 className="block w-full flex-1 border-1 bg-white py-1.5 pl-3 text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm sm:leading-6"
                 
               />
@@ -116,7 +178,7 @@ const JobSeekerForm = () => {
               <label className="block mb-2 text-lg">Email</label>
               <input
                 type="email" 
-                value={defaultValue.email}
+                // value={defaultValue.email}
                 placeholder="Ex: abc@gmail.com"
                 {...register("email")}
                 className="block w-full flex-1 border-1 bg-white py-1.5 pl-3 text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm sm:leading-6"
@@ -246,13 +308,26 @@ const JobSeekerForm = () => {
           </div>
 
         
-          <input
-            type="submit"
-            className="block mt-12 bg-blue text-white font-semibold px-8 py-2 rounded-sm cursor-pointer "
-          /> 
+          <div className="flex flex-row ">
+            <input
+              type="submit"
+              className="block mt-12 bg-blue text-white font-semibold px-8 py-2 mx-4 rounded-sm cursor-pointer "
+            /> 
+
+            <button 
+              type="button"
+              className="block mt-12 bg-blue text-white font-semibold  mx-4 px-8 py-2 rounded-sm cursor-pointer"
+              onClick={handleSubmit(handleModify)}>
+              Modify
+            </button>
+          </div>
+
+          
         </form>
       </div>
     </div>
   );
 };
 export default JobSeekerForm;
+
+

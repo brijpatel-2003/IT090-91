@@ -7,24 +7,30 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import app from "../firebase/firebase.config";
 import axios from 'axios';
+import { useDispatch } from "react-redux";
+import { addTodo } from "../todoSlicer";
 
 axios.defaults.withCredentials = true; 
 
 
 function Login() {
-  
+  const dispatch = useDispatch();
 //--->  google authentication
   const auth = getAuth();
   const googleProvider = new GoogleAuthProvider();
   const navigate = useNavigate()
-
+ 
   const handleLogin= ()=>{
     signInWithPopup(auth, googleProvider)
     .then((result) => {
       const user = result.user;
+      // console.log(" user :  ", user.email)
 
-       console.log(user);
-       navigate('/mode');
+      //  console.log(user.email,"user1-------user1");
+      // localStorage.setItem('usertoken' ,res.token);
+      dispatch(addTodo({userEmail:user.email,mode:user.mode}))
+
+       navigate(`/mode/${user.email}`);
     
     }).catch((error) => {
       
@@ -38,6 +44,7 @@ function Login() {
   const [inputValue , setInputValue] = useState({
     email:"",
     password:"",
+    mode:"jobseeker"
   });
   
   // console.log(inputValue);
@@ -53,6 +60,8 @@ function Login() {
       }
     })
   }
+
+  // console.log("input value" , inputValue)
 
   const loginUser = async (e)=>{
     e.preventDefault();
@@ -88,22 +97,50 @@ function Login() {
         const res = await data.json();
 
         const resAcknowledge =  await res.acknowledged;
+        
         if(resAcknowledge==="success"){
           toast.success(res.message);
          
           let userEmail = email;
+
           //set token in local storage
           localStorage.setItem('usertoken' ,res.token);
+
+          //session storage
+          const now = new Date();
+          const expirationTime = now.getTime() + 60 * 24 * 60 * 1000;
+      
+          // Create an object to store both the value and the expiration time
+          const itemWithExpiry = {
+              value: res.token,
+              expiry: expirationTime,
+          };
+      
+          // Convert the object to a JSON string before storing in sessionStorage
+          sessionStorage.setItem('usertoken', JSON.stringify(itemWithExpiry));
 
           setInputValue({
             ...inputValue,
             email:"",
             password:"",
+            mode:"jobseeker"
            })
            
+          dispatch(addTodo({userEmail:email,mode:inputValue.mode}))  //dispatch
+          // localStorage.setItem("userrole", inputValue.mode)
+
           setTimeout(() => {
-            navigate(`/mode/${email}`);
-          }, 3000);
+          
+            if(inputValue.mode === "jobseeker"){
+              localStorage.setItem("selectedMode", "jobseeker")
+              navigate(`/resumeUploader`)
+            }
+            else if(inputValue.mode === "employer"){
+              localStorage.setItem("selectedMode", "employer")
+              navigate(`/home-employer`)
+            }
+          }, 1500);
+
         } 
         else if(res.error){
           toast.error(res.error);
@@ -164,22 +201,25 @@ function Login() {
                 />
               </div>
 
-              <div className="flex justify-between md:justify-between  sm:justify-normal md:ml-6 mx-6 mt-2 mb-4 sm:mx-2 ">
-                <div>
-                  <input
-                    className=""
-                    type="checkbox"
-                    id="checkboxField"
-                    value=""
-                    checked
-                  />
-                  <label className="form-checkbox h-6 w-6 " for="form1Example3">
-                    {" "}
-                    Remember me{" "}
-                  </label>
+              <div className="flex flex-col ml-4 mr-4">
+                <h4 className=" text-start text-lg mb-2 mt-2">Select the Role</h4>
+                <div className='w-full'>
+                  <select
+                    className='border sm:w-full rounded py-2 px-4  mb-6'
+                    value={inputValue.mode}
+                    onChange={setValue}
+                    name='mode'
+                    id='mode'
+                  >
+                    <option value='jobseeker'> JobSeeker</option>
+                    <option value='employer'> Employer</option>
+                  </select>
                 </div>
 
+                
               </div>
+
+             
 
               <div className="mx-4">
                 <button

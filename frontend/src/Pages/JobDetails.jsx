@@ -1,83 +1,77 @@
 import React, { useEffect, useState } from 'react'
 import {FiMapPin, FiCalendar} from 'react-icons/fi';
 import {MdCurrencyRupee} from 'react-icons/md'
+import { useSelector } from 'react-redux';
 import { useParams ,Link} from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 let companyMail="";
 
 function JobDetails() {
 
   const {id} = useParams();
-
-  const [email, setEmail] = useState('');
   const [job, setJob] =useState([]);
-  const [isPopupOpen , setIsPopupOpen] = useState(false);
+
+  const todos = useSelector(state=> state.todos)
 
   const {companyName , companyLogo, jobTitle, minPrice, maxPrice,employmentType , postingDate, jobLocation ,jobDescription,companyDescription, experienceLevel, salaryType,vacancy, postedBy, websiteLink} = job;
 
   useEffect(() =>{
     fetch(`http://localhost:3000/all-jobs/${id}`).then((res) => res.json()).then((data) => setJob(data))
-  },[])
+  },[todos])
 
   const handleApplySubmit = async(email) => {
          // Handle the submission logic here
-        console.log('Submitted email:', email);
-        await  fetch(`http://localhost:3000/jobseeker/${email}`).then((res) => res.json()).then((data) => {
-        data[0].companyMail=postedBy;
-        console.log('data data data:\n\n',data);
-       
-        const dataApplicant = {
-             email: data[0].email,
-             companyMail :data[0].companyMail
-        };
+        // console.log('Submitted email:', email);
+        email = todos.userEmail;
+        await  fetch(`http://localhost:3000/jobseeker/${todos.userEmail}`).then((res) => res.json()).then((data) => {
+            console.log("here is the data",data)
+            // data[0].companyMail=postedBy;
+            
+       ;
+            let dataApplicant = {
+                email: email,//indepent of useremail// this is the email  which comes from res
+                companyMail :postedBy
+            };
+            console.log("dataApplicants",dataApplicant);
+            fetch('http://localhost:3000/post-application', {
+                method: 'POST',
+                mode:"cors",
+                headers :{
+                    "Content-Type" : 'application/json',
+                },
+                body : JSON.stringify(dataApplicant)
+            }).then(res=>res.json()).catch(err=>console.log(err))
 
-        fetch('http://localhost:3000/post-application', {
-        method: 'POST',
-        mode:"cors",
-        headers :{
-            "Content-Type" : 'application/json',
-        },
-        body : JSON.stringify(dataApplicant)
-        }).then(res=>res.json()).catch(err=>console.log(err))
+            dataApplicant = {
+                email: email,//indepent of useremail// this is the email  which comes from res
+                id:id
+            };
+        console.log("applied job",dataApplicant);
+            fetch('http://localhost:3000/post-applied-job', {
+                method: 'POST',
+                mode:"cors",
+                headers :{
+                    "Content-Type" : 'application/json',
+                },
+                body : JSON.stringify(dataApplicant)
+            }).then(res=>res.json())
+            .then(data => {
+                    toast.success("Applied Successfully.")
 
-
-       });
+            })
+            .catch(err=>console.log(err));
+            
+       }).catch(err => {
+        console.log("Error from outer api call",err)
+       });    
     };
 
     const handleApplyNow = () => {
-        setIsPopupOpen(true);
+        // setIsPopupOpen(true);
+        handleApplySubmit("brijpatidar@gmail.com")
     };
-
-    //AppplyPopup Component
-    const ApplyPopup = ({ isOpen, onClose, onSubmit }) => {
-        const handleSubmit = () => {
-            onSubmit(email);
-            onClose();
-        };
-    
-        return (
-            isOpen && (
-            <div className="popup">
-                <div className="popup-inner">
-                <label className='text-xl'>Email:</label>
-                <input
-                    autoFocus
-                    type="email"
-                    placeholder='Enter Your Email : '
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className='w-[70%] rounded border border-stroke pl-2 py-1 ml-4'
-                />
-                <div className='flex justify-between mt-4'>
-                <button className='w-[30%] rounded-full  bg-blue p-1.5 text-white transition hover:bg-opacity-90' onClick={handleSubmit}>Submit</   button>
-                <button className='sm:w-[25%] rounded-full  bg-blue p-1.5 text-white transition hover:bg-opacity-90 sm:mr-32 mr-28' onClick={onClose}>Cancel</button>
-                </div>
-                </div>
-            </div>
-            )
-        );
-    };
-  
 
    
   return (
@@ -161,11 +155,11 @@ function JobDetails() {
                             <div className="items-link items-link2 f-right mt-6">
                                 <Link to="#" className="btn"> <button className='btn' onClick={handleApplyNow}>Apply Now</button></Link>
                             </div>
-                            <ApplyPopup
+                            {/* <ApplyPopup
                                isOpen={isPopupOpen}
                                onClose={() => setIsPopupOpen(false)}
                                onSubmit={handleApplySubmit}
-                          />
+                          /> */}
                         </div>
 
                         <div className="mt-5 ml-12 mr-12 mb-10">
@@ -187,6 +181,7 @@ function JobDetails() {
                
             </div>
         </div>
+        <ToastContainer/>
     </section>
   )
 }

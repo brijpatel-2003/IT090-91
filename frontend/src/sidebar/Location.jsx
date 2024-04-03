@@ -10,9 +10,9 @@ function Location({ handleChange }) {
         <label className="sidebar-label-container">
           <input
             type="radio"
-            name="test"
-            id="test"
-            value="All"
+            name="location"
+            id="location"
+            value="all"
             onChange={handleChange}
           
           />
@@ -23,34 +23,34 @@ function Location({ handleChange }) {
           handleChange={handleChange}
           value="london"
           title="London"
-          name="test"
+          name="location"
         />
         
         <InputField
           handleChange={handleChange}
           value="san Francisco"
           title="San Francisco"
-          name="test"
+          name="location"
         />
         
         <InputField
           handleChange={handleChange}
           value="banglore"
           title="Banglore"
-          name="test"
+          name="location"
         />
         
         <InputField
           handleChange={handleChange}
           value="Boston"
           title="Boston"
-          name="test"
+          name="location"
         />
         <InputField
           handleChange={handleChange}
           value="Mahesana"
           title="Mahesana"
-          name="test"
+          name="location"
         />
       </div>
     </div>

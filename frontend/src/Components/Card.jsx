@@ -28,7 +28,7 @@ function Card({data}) {
       </div>
       <div className="items-link items-link2 f-right">
         {/* <a href="job_details.html">{employmentType}</a> */}
-          <Link to={`/job/${_id}`}><button type='button'>{employmentType}</button></Link>
+          <Link to={`/job/${_id}`}><button type='button' >{employmentType}</button></Link>
       </div>
     </div>
 

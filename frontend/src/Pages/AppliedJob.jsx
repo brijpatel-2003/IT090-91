@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
-const Myjobs = ()=>{
-    // const e = useParams();
-    
 
+const AppliedJob = ()=>{
+    
     const[jobs,setjobs] = useState([])
     const [searchText,setSearchText] = useState("")
     const [isLoading,setIsLoading]=useState(true);
@@ -14,26 +13,31 @@ const Myjobs = ()=>{
     const itemsPerPage =4;
     //redux
     const todos = useSelector(state=>state.todos);
-    
+  
     useEffect(()=>{
+        let jobList=[];
+
         setIsLoading(true)
-        fetch(`http://localhost:3000/my-jobs/${todos.userEmail}`).then((res) => res.json())
+        
+        fetch(`http://localhost:3000/applied-jobs/${todos.userEmail}`).then((res) => res.json())
         .then((data) => {
-          
-          setjobs(data); // Set the jobs state with the fetched data
-          setIsLoading(false);
+        //   console.log("i am at useEffect",data);
+          jobList= data;
+          fetch(`http://localhost:3000/get-Jobs/${jobList}`).then((res) => res.json())
+          .then((data) => {
+          //   console.log("i am at useEffect",data);
+            setjobs(data); // Set the jobs state with the fetched data
+            setIsLoading(false);
+          })
+       
         })
+    },[todos])
 
-        
-        
-    },[searchText,todos])
-
-    // Pagination
+    // // Pagination
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem =indexOfLastItem -itemsPerPage;
 
     const currentJobs =jobs.slice(indexOfFirstItem ,indexOfLastItem);
-
     //next button and previous button
     const nextPage = ()=>{
         if(indexOfLastItem < jobs.length){
@@ -49,7 +53,7 @@ const Myjobs = ()=>{
 
 
     const  handleSearch =()=>{
-        const filter = jobs.filter(  (job) => 
+        const filter = jobs.filter((job) => 
                       job.jobTitle.toLowerCase().indexOf(searchText.toLowerCase()) !== -1 );
 
         // console.log(filter);
@@ -57,15 +61,23 @@ const Myjobs = ()=>{
         setIsLoading(false);
     }
 
-    const handleDelete = (id)=>{
-      fetch(`http://localhost:3000/job/${id}`,{
-        method:"DELETE"
+    const handleDelete = async(id)=>{
+      let jobid="";
+      await fetch(`http://localhost:3000/applied-jobs/getOne/${id}`).then(res=>res.json()).then(data=>{
+        console.log(data);
+        id = data._id
       })
-      .then(res=>res.json())
-      .then(data=>{
-        if(data.acknowledged === true){
-          alert("Succsessfully deleted")
-        }
+
+      fetch(`http://localhost:3000/applied-jobs/${id}`,
+      {
+        method: 'DELETE',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+       
+      }).then(Response=>Response.json()).then(data=>{
+        console.log(data);
       })
     }
 
@@ -88,10 +100,6 @@ const Myjobs = ()=>{
                       <div className="relative w-full px-4 max-w-full flex-grow flex-1">
                         <h3 className="font-semibold text-base text-blueGray-700">All Jobs</h3>
                       </div>
-                      <div className="relative w-full px-4 max-w-full flex-grow flex-1 text-right">
-                      <Link to="/post-job">
-                        <button className="bg-indigo-500 text-white active:bg-indigo-600 text-xs font-bold uppercase px-3 py-1 rounded outline-none fo cus:outline-none mr-1 mb-1 ease-linear transition-all duration-150" type="button"> Post A New </button> </Link>
-                      </div>
                     </div>
                   </div>
 
@@ -111,10 +119,12 @@ const Myjobs = ()=>{
                         <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
                                         SALARY
                                       </th>
+                        
                         <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
-                                        EDIT
+                                       STATUS
                                       </th>
-                        <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left">
+                                      
+                        <th className="px-6 bg-blueGray-50 text-blueGray-500 align-middle border border-solid border-blueGray-100 py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left"  >
                                         DELETE
                                       </th>
                         </tr>
@@ -141,8 +151,7 @@ const Myjobs = ()=>{
                                           ${job.minPrice}-${job.maxPrice}
                                       </td>
                                       <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
-                                        
-                                      <Link to={`/edit-jobs/${job?._id}`}> <button>Edit</button></Link>
+                                        Processing
                                       </td>
                                       <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
                                         <button onClick={()=>{
@@ -181,4 +190,4 @@ const Myjobs = ()=>{
         </div>
     )
 }
-export default Myjobs;
+export default AppliedJob;

@@ -1,24 +1,51 @@
 import React, { useState } from 'react'
-import { Link, NavLink, useParams } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useParams } from 'react-router-dom';
 import App from '../App';
 import {FaBarsStaggered, FaXmark} from 'react-icons/fa6';
+import { useDispatch, useSelector } from 'react-redux';
+import Error from '../Pages/Error';
+import { removeTodo } from '../todoSlicer';
 
-function Navbar() {
+function Navbar () {
     const email = useParams();
 
+    const todos = useSelector((state)=>state.todos);
+    const dispatch = useDispatch();
     const [isMenuOpen ,setIsMenuOpen] =  useState(false);
-    
+    const navigate = useNavigate()
     //Fuction
     const handleMenuToggler = ()=>{
         setIsMenuOpen(!isMenuOpen);  //toggle on-off
     }
+    const handleClick = ()=>{
+        dispatch(removeTodo())
+        navigate('/login');
+    }
+    //from localStorage
+    const mode = localStorage.getItem("selectedMode");
 
-    const navItems = [
-        {path: `/${email['email']}`, title:"Start a search"},
-        {path: `/my-job/${email['email']}`, title:"My Jobs"},
-        {path: `/post-job/${email['email']}`, title:"Post A Job"},
-        {path: `/contact/${email['email']}`, title:"Contact"},
-    ]
+    let navItems ;
+    
+    if(mode === "jobseeker"){
+        navItems = [
+            {path: `/`, title:"All Jobs"},
+            {path: `/applied-job`, title:"Applied Jobs"},
+            {path: `/modify-Jobseekerdata/${todos.userEmail}`, title:"Update Resume"},      //update letter on with resume email id, so that you can modified on letar on
+            {path: `/contact`, title:"Contact"},
+    
+        ]
+    }
+    else if(mode === "employer"){
+        navItems = [
+            {path: `/home-employer`, title:"All JobSeeker"},
+            {path: `/my-job`, title:"My Jobs"},
+            {path: `/post-job`, title:"Post A Job"},
+            {path: `/contact`, title:"Contact"},
+        ]
+    }else{
+        return ( <Error/>)
+    }
+   
 
     return (
         <header className={`max-w-screen-2xl container mx-auto xl:px-20 px-4`}>
@@ -44,8 +71,9 @@ function Navbar() {
 
                {/* sign-up and Login button */}
                <div className='text-base text-primary font-medium space-x-5 hidden lg:block'>
-                    <Link to="/login" className='login-btn py-2 px-5 border rounded'>Log in</Link>
-                    <Link to="/sign-up" className='py-2 px-5 border rounded bg-blue text-white'>Sign up</Link>
+                <button className='login-btn py-2 px-5 border rounded' onClick={handleClick}>Log out</button>
+                   
+                    {/* <Link to="/sign-up" className='py-2 px-5 border rounded bg-blue text-white'>Sign up</Link> */}
                </div>
 
                {/* Mobile menu */}
@@ -76,7 +104,7 @@ function Navbar() {
                  }
 
                  {/* sign-up and` Login button  for mobile */}
-                  <li className='text-primary py-1'> <Link to="/login">Log in</Link></li>
+                  <li className='text-primary py-1' onClick={handleClick}> Log out</li>
 
                 </ul>
             </div>

@@ -25,9 +25,9 @@ function JobPostingData({handleChange}) {
       <label className="sidebar-label-container">
         <input
           type="radio"
-          name="test"
-          id="test"
-          value=""
+          name="date_of_posting"
+          // id="date_of_posting"
+          value="all"
           onChange={handleChange}
         />
         <span className="checkmark"></span>All time
@@ -37,21 +37,21 @@ function JobPostingData({handleChange}) {
         handleChange={handleChange}
         value={twentyFourHoursAgoDate}
         title="Last 24 Hours"
-        name="test"
+        name="date_of_posting"
       />
       
       <InputField
         handleChange={handleChange}
         value={SevenDaysAgoDate}
         title="Last 7 Days"
-        name="test"
+        name="date_of_posting"
       />
       
       <InputField
         handleChange={handleChange}
         value={ThirtyDaysAgoDate}
         title="Last Month"
-        name="test"
+        name="date_of_posting"
       />
     </div>
   </div>

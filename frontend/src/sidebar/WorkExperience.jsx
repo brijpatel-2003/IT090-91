@@ -11,9 +11,9 @@ function WorkExperience({handleChange}) {
       <label className="sidebar-label-container">
         <input
           type="radio"
-          name="test"
-          id="test"
-          value=""
+          name="work_experience"
+          id="work_experience"
+          value="all"
           onChange={handleChange}
         />
         <span className="checkmark"></span>Any Experience
@@ -21,23 +21,23 @@ function WorkExperience({handleChange}) {
 
       <InputField
         handleChange={handleChange}
-        value="fresher"
+        value="No Experience"
         title="Fresher"
-        name="test"
+        name="work_experience"
       />
 
       <InputField
         handleChange={handleChange}
-        value="intership"
-        title="Intership"
-        name="test"
+        value="internship"
+        title="Internship"
+        name="work_experience"
       />
       
       <InputField
         handleChange={handleChange}
         value="work remotely"
         title="Work remotely"
-        name="test"
+        name="work_experience"
       />
       
      

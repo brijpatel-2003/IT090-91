@@ -11,12 +11,13 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
 const cookieParser =  require('cookie-parser')
+const  nodemailer =  require('nodemailer');
 const jwt = require('jsonwebtoken');
-const passport  =require('passport');
-const OAuth2Strategy = require('passport-google-oauth2').Strategy;
+const { senderTokenFun } = require('./emailVerifier/senderToken.js');
 
 
 const port = process.env.PORT | 3000;
+
 
 //middlewars
 app.use(cors({
@@ -32,7 +33,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 //backend code for resume parsing
-const apiUrl = 'http://127.0.0.1:5000/api/data/pdf';
+
 
 let b = {
   email: "",
@@ -51,7 +52,7 @@ let a = [
   "Student's achievements: give direct ans which given in pdf",
   "student's projects: give direct ans which given in pdf",
   "student's skills: give direct ans which given in pdf",
-  "student's experience: give direct ans which given in pdf"
+  "student's experience or work experience : give direct ans which given in pdf"
 ];
 
 let c = ["email", "name", "education", "achievement", "project", "skill","experience"];
@@ -70,8 +71,9 @@ async function fetchData(fileData) {
       });
 
       formData.append('data', a[i]);
-
-      const apiResponse = await axios.post(apiUrl, formData, {
+      // console.log(process.env.API_URL,"\napi\n\n");
+     
+      const apiResponse = await axios.post("http://127.0.0.1:5000/api/data/pdf", formData, {
         headers: {
           ...formData.getHeaders(),
         },
@@ -96,63 +98,6 @@ async function fetchData(fileData) {
 
 // -----------------------------------------------------------------------------------------------------
 
-
-//setup session
-// app.use(session({
-//   secret : "u23hdns71hgdp2003rths39e",
-//   resave: false,
-//   saveUninitialized :true
-// }))
-
-// // setup passport
-// app.use(passport.initialize());
-// app.use(passport.session());
-
-// passport.use(
-//     new OAuth2Strategy({
-//       clientID :clientId,
-//       clientSecret :clientSecret,
-//       callbackURL :"/auth/google/callback",
-//       scope:["profile","email"]
-//     }, 
-//     //  async function
-//     async(accessToken , refreshToken , profile , done)=>{
-//       console.log(profile);
-//         try {
-//           let user = await userdb.findOne({googleId :profile.id}).exec();
-
-//              if(!user){
-//                 user  =  new userdb({
-//                   googleId :profile.id,
-//                   displayName : profile.displayName,
-//                   email : profile.emails[0].value,
-//                   image : profile.photos[0].value
-//                 })
-
-//                 await user.save();
-//              }
-
-//         }catch (err) {
-//             return done(err,null);
-//         }
-//     })
-// )
-
-// passport.serializeUser((user, done) => {
-//   done(null,user);
-// });
-
-// passport.deserializeUser((user, done) => {
-//   done(null,user);
-// });
-
-// //initial google auth login
-// app.get('/auth/google', passport.authenticate("google", {scope:["profile","email"]}))
-
-// app.get('/auth/google/callback', passport.authenticate("google", {
-//   successRedirect:"http://localhost:5173",
-//   failureRedirect:"http://localhost:5173/login"
-// }))
 
 
 
@@ -181,15 +126,16 @@ async function connectDB() {
     const users = db.collection("users");
     const jobSeeker = db.collection("jobSeeker");
     const application = db.collection("application");
+    const appliedJobs = db.collection("appliedJobs");
 
     // Start the Express server only after the DB connection is established
-    startServer(jobCollection, users,jobSeeker, application);
+    startServer(jobCollection, users,jobSeeker, application, appliedJobs);
   } catch (err) {
     console.error("Error connecting to MongoDB:", err);
   }
 }
 
-function startServer(jobCollection ,users, jobSeeker, application) {
+function startServer(jobCollection ,users, jobSeeker, application, appliedJobs) {
   
   //------------------------------------for Job-----------------------------------------------
   // Routes
@@ -199,7 +145,7 @@ function startServer(jobCollection ,users, jobSeeker, application) {
       return res.status(400).json({ error: 'Invalid request body' });
     }
     body.createAt = new Date();
-    console.log(body);
+    // console.log(body);
 
     try {
       const result = await jobCollection.insertOne(body);
@@ -226,7 +172,7 @@ function startServer(jobCollection ,users, jobSeeker, application) {
     try {
       const id =  req.params.id;
       const job = await jobCollection.findOne({_id : new ObjectId(id)});
-      console.log(job);
+      // console.log(job);
       res.send(job);
 
     } catch (err) {
@@ -234,6 +180,24 @@ function startServer(jobCollection ,users, jobSeeker, application) {
     }
   });
 
+  app.get("/get-Jobs/:jobList", async (req, res) => {
+    let jobList = req.params.jobList;
+    let jobLists = jobList.split(',');
+
+    // Use Promise.all to wait for all promises to resolve
+    try {
+        let jobs = await Promise.all(jobLists.map(async (x) => {
+            return await jobCollection.findOne({ _id: new ObjectId(x) });
+        }));
+
+        // console.log(jobs);
+        res.status(200).send(jobs);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
 
   app.delete("/delete-job/:id",async(req,res)=>{
     const id = req.params.id
@@ -243,6 +207,7 @@ function startServer(jobCollection ,users, jobSeeker, application) {
   app.get("/my-jobs/:email",async(req,res)=>{
 
     let jobs = await jobCollection.find({postedBy:req.params.email});
+    // console.log("\n\nposted jobs for particular user length\n\n", jobs.length);
       jobs = await jobs.toArray()
     res.send(jobs);
   })
@@ -280,12 +245,12 @@ function startServer(jobCollection ,users, jobSeeker, application) {
     res.send(result);
   })
 
-
+  var useremail = "",userpassword="",username="",usermode="";
   //------------------------------------for Users-----------------------------------------------
   app.post("/sign-up" ,async (req, res)=>{
     // console.log(req.body)
 
-    const {name ,email, password ,confirmPassword} = req.body;
+    const {name ,email, password ,confirmPassword, mode} = req.body;
 
     if(!name || !email || !password || !confirmPassword){
         res.status(400).json({error: "Fill all the Details"})
@@ -301,26 +266,20 @@ function startServer(jobCollection ,users, jobSeeker, application) {
         }else if(password !== confirmPassword){
           res.status(404).json({error: "Password and Confirm Password Not Match."})
         }else{
-          // hash the password
-          const salt =  await bcrypt.genSalt(8);
-          const hashPassword = await bcrypt.hash(password,salt);
-
-          const finalUser = await users.insertOne({name:name, email:email, password:hashPassword ,tokens:[{token:""}]}); //stored in database
-          
-          
-          //find saved user in db
-          const saved_user = await users.findOne({email : email});
-           
-          
-          if (finalUser.insertedId) {
-              //Geneate JWT Token
-              const token = jwt.sign({userID: saved_user._id} , process.env.JWT_SECRET_KEY, {expiresIn : '1d'})
+             usermode = mode;
+             username =name;
+             useremail =  email;
+             userpassword = password;
+              // console.log("first token :  ", token)
+              let token = "token"
+              await senderTokenFun(email, token);
+ 
+              // console.log("\n\n after sending email...")
+ 
             
              res.status(201).json({message: "Registration successful!", status: "success" ,token : token});
              
-          } else {
-             res.status(404).json({error: "Cannot insert User. Try again later", status: "failed" });
-          }
+         
         }
 
     } catch(err){
@@ -330,7 +289,7 @@ function startServer(jobCollection ,users, jobSeeker, application) {
   })
 
   app.post("/login" ,async (req, res)=>{
-      const {email, password} = req.body;
+      const {email, password, mode } = req.body;
 
       if(!email || !password){
         res.status(400).json({error: "Fill all the Detail"})
@@ -338,13 +297,19 @@ function startServer(jobCollection ,users, jobSeeker, application) {
 
       try {
         const userValid = await users.findOne({email : email});
-
+       
         if(userValid != null){
            const isMatch =  await bcrypt.compare(password, userValid.password);
 
-           if((userValid.email === email) && isMatch){
+           if((userValid.email === email) && isMatch ){
+             
+            if(userValid.mode !== mode){
+               return res.status(400).json({error: "Please select Appropriate mode"});
+             }
+
              //token genearate
              const token = jwt.sign({userID: userValid._id} , process.env.JWT_SECRET_KEY, {expiresIn : '1d'})
+             
              userValid.tokens =userValid.tokens.concat({token :token});
              
              //append token
@@ -408,6 +373,45 @@ function startServer(jobCollection ,users, jobSeeker, application) {
   })
 
 
+  //verify token using mail
+  app.get('/verify/:token', async (req, res)=>{ 
+    const {token} = req.params; 
+      
+   
+    if(useremail && userpassword && username){
+      const salt =  await bcrypt.genSalt(8);
+      const hashPassword = await bcrypt.hash(userpassword,salt);
+
+      const finalUser = await users.insertOne({name:username, email:useremail, password:hashPassword, mode:usermode , tokens:[{token:""}]}); //stored in database
+      
+     
+       if(finalUser.insertedId){
+        res.redirect('http://localhost:5173/login');
+       }
+       else{
+        res.statusCode(500).json({error : "Data not inserted"})
+       }
+      
+      
+    }
+    else{
+      res.statusCode(500).json({error : "Check line no 465 in backend"})
+    }
+       
+      } 
+    ); 
+
+  
+  
+
+app.get('/user/:email',async(req,res)=>{
+  let {email} = req.params;
+  // console.log(email);
+  let user =  await users.findOne({email:email});
+ 
+  
+  res.send(user);
+})
   //resume parsing code
   app.get("/data",(req, res) => {
      res.send(b);
@@ -426,6 +430,10 @@ function startServer(jobCollection ,users, jobSeeker, application) {
   });
 
 
+
+
+
+
   //------------------------------------for Job Seeker-----------------------------------------------
   app.post("/post-jobSeeker",async(req,res)=>{
    
@@ -434,7 +442,7 @@ function startServer(jobCollection ,users, jobSeeker, application) {
       return res.status(400).json({ error: 'Invalid request body' });
     }
     body.createAt = new Date();
-    console.log(body);
+    // console.log(body);
 
     try {
       const result = await jobSeeker.insertOne(body);
@@ -457,7 +465,27 @@ function startServer(jobCollection ,users, jobSeeker, application) {
       res.status(500).json({ error: err.message });
     }
   });
+  app.get("/all-jobSeeker/email/:email", async (req, res) => {
+    try {
+      let email = req.params.email;
+      const jobseeker = await application.find({companyMail:email}).toArray();
+      let jobSeekerlist = [];
+    // console.log(jobseeker);
+      for (const element of jobseeker) {
+        let j = await jobSeeker.find({ email: element.email });
+        j = await j.toArray();
+       
+        jobSeekerlist.push(...j);
 
+    }
+  
+      // console.log(list.length);
+    console.log("hello",jobSeekerlist);
+      res.send(jobSeekerlist);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
   app.get("/all-jobSeeker/:id", async (req, res) => {
     try {
       let id = req.params.id;
@@ -474,8 +502,42 @@ function startServer(jobCollection ,users, jobSeeker, application) {
         // console.log("JOBS---------",jobs);
       res.send(jobs);
   })
+  app.get("/jobseeker/id/:id",async(req,res)=>{
+   
+    let jobs = await jobSeeker.find({id:req.params.id});
+        jobs = await jobs.toArray()
+        // console.log("JOBS---------",jobs);
+      res.send(jobs);
+  })
+
+  app.get("/jobseeker/_id/:id",async(req,res)=>{
+    console.log("hi modify resume page ", req.params.id);
+
+    let jobs = await jobSeeker.find({_id:new ObjectId(req.params.id)});
+        jobs = await jobs.toArray()
+        // console.log("JOBS---------",jobs);
+      res.send(jobs);
+  })
+
+  app.put("/jobSeekerupdate/:email",async(req,res)=>{
+    let {email} = req.params;
+    const body = req.body;
+   let a =  await jobSeeker.updateOne({email:email},{$set:body});
+  
+   res.send("updated");
+  })
 
 
+  app.put("/jobSeekerupdate/id/:id",async(req,res)=>{
+    let {id} = req.params;
+    const body = req.body;
+
+    console.log("hi modify resume page ", id, body);
+  
+    let a =  await jobSeeker.updateOne({_id:new ObjectId(id)},{$set:body});
+    console.log("da")
+    res.send("updated");
+  })
   //----------------------------------------Application-----------------------------------------
 
   //appicants appply detail table :  whenever applicant apply , then their data will submitted and stored.
@@ -486,20 +548,91 @@ function startServer(jobCollection ,users, jobSeeker, application) {
       return res.status(400).json({ error: 'Invalid request body' });
     }
     // body.createAt = new Date();
-    console.log("got at post-application",body);
+    // console.log("got at post-application",body);
 
     try {
 
       const result = await application.insertOne(body);
+      if (result.insertedId) {
+
+        return res.status(200).send(result);
+      } else {
+        return res.status(404).send({ message: "Cannot insert. Try again later", status: false });
+      }
+    } catch (err) {
+      return res.status(500).json({ error: err.message});
+    }
+})
+
+
+  //----------------------------------------Applied Jobs-----------------------------------------
+  //appicants appply detail table :  whenever applicant apply , then it will stored the list of jobs.
+  app.post("/post-applied-job",async(req,res)=>{
+   
+    const body = req.body;
+    if (!body) {
+      return res.status(400).json({ error: 'Invalid request body' });
+    }
+
+    // console.log("got at applied job",body);
+
+    try {
+
+      const result = await appliedJobs.insertOne(body);
       if (result.insertedId) {
         return res.status(200).send(result);
       } else {
         return res.status(404).send({ message: "Cannot insert. Try again later", status: false });
       }
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: err.message});
     }
 })
+app.get("/applied-jobs/getOne/:id",async(req,res)=>{
+  let {id} = req.params;
+  // console.log('apply')
+  try {
+    let job  = await appliedJobs.findOne({id:id})
+  
+  //  console.log("applied job",job);
+   res.send(job);
+    
+  } catch (error) {
+    
+  };
+}) 
+
+app.delete("/applied-jobs/:id",async(req,res)=>{
+
+  let {id} = req.params;
+ 
+  try{
+    let resp = await appliedJobs.deleteOne({_id:new ObjectId(id)});
+  
+  }
+  catch(err){
+    console.log("error at delete applied id");
+  }
+ 
+
+})
+
+// it gives list of company mail for particular jobseeker  
+  app.get("/applied-jobs/:email", async (req, res)=>{
+    try {
+      let jobs =  await appliedJobs.find({email:req.params.email});
+      let jobList = await jobs.toArray();
+      
+     let jobsList =  jobList.map((x)=>{
+        return x.id;
+      })
+        return res.status(200).send(jobsList);
+      
+    } catch (err) {
+      return res.status(500).json({ error: err.message});
+    }
+    
+  })
  
   // Start Express server
   app.listen(port, () => {
